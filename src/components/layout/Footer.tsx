@@ -8,7 +8,7 @@ export function Footer() {
                     <div className="relative h-8 w-8 overflow-hidden rounded-full">
                         <Image
                             src="/logo.jpg"
-                            alt="BlackJax Logo"
+                            alt="House of Puppies Logo"
                             fill
                             className="object-cover"
                         />

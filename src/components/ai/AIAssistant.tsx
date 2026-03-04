@@ -14,7 +14,7 @@ interface Message {
 export function AIAssistant() {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
-        { role: "bot", text: "Hello! I'm Paw-sistent, your BlackJax helper. How can I assist you today?" },
+        { role: "bot", text: "Hello! I'm Paw-sistent, your House of Puppies helper. How can I assist you today?" },
     ]);
     const [input, setInput] = useState("");
     const scrollRef = useRef<HTMLDivElement>(null);
