@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import RecordForm from "./record-form";
+import RecordActions from "./record-actions";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminRecordsPage() {
     const records = await prisma.record.findMany({
@@ -34,12 +37,13 @@ export default async function AdminRecordsPage() {
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Service</th>
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Price</th>
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Status</th>
+                                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right w-24">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="[&_tr:last-child]:border-0">
                                 {records.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                                        <td colSpan={6} className="p-4 text-center text-muted-foreground">
                                             No records found. Add one to get started.
                                         </td>
                                     </tr>
@@ -67,6 +71,9 @@ export default async function AdminRecordsPage() {
                                             `}>
                                                 {record.status}
                                             </span>
+                                        </td>
+                                        <td className="p-4 align-middle text-right">
+                                            <RecordActions record={record} />
                                         </td>
                                     </tr>
                                 ))}

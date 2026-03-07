@@ -1,12 +1,68 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockPets, mockInventory } from "@/lib/data";
+import { prisma } from "@/lib/prisma";
 import { BarChart, Activity, DollarSign, Package } from "lucide-react";
 
-export default function ReportsPage() {
-    const totalPatients = mockPets.length;
-    const vetPatients = mockPets.filter(p => p.service === "Veterinary").length;
-    const groomingPatients = mockPets.filter(p => p.service === "Grooming").length;
-    const lowStockItems = mockInventory.filter(i => i.status === "Low").length;
+export const dynamic = "force-dynamic";
+
+export default async function ReportsPage() {
+    const totalPatients = await prisma.pet.count();
+    const servicesDelivered = await prisma.record.count();
+
+    const lowStockItemsData = await prisma.inventoryItem.findMany({
+        where: { status: "Low" }
+    });
+    const lowStockItemsCount = lowStockItemsData.length;
+
+    // Fetch Recent Activities
+    const recentRecords = await prisma.record.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { pet: true }
+    });
+
+    const recentPrescriptions = await prisma.prescription.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { pet: true }
+    });
+
+    const recentVaccinations = await prisma.vaccination.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { pet: true }
+    });
+
+    // Combine and sort by date
+    const activities = [
+        ...recentRecords.map(r => ({
+            id: `rec-${r.id}`,
+            title: r.pet.name,
+            description: `Service: ${r.serviceType} - ${r.status}`,
+            date: r.createdAt,
+            type: 'Service'
+        })),
+        ...recentPrescriptions.map(p => ({
+            id: `pres-${p.id}`,
+            title: p.pet.name,
+            description: `Prescription: ${p.medicine}`,
+            date: p.createdAt,
+            type: 'Prescription'
+        })),
+        ...recentVaccinations.map(v => ({
+            id: `vac-${v.id}`,
+            title: v.pet.name,
+            description: `Vaccination: ${v.name}`,
+            date: v.createdAt,
+            type: 'Vaccination'
+        }))
+    ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 7);
+
+    // Calculate actual revenue
+    const recordsWithPrice = await prisma.record.findMany({
+        where: { price: { not: null } },
+        select: { price: true }
+    });
+    const totalRevenue = recordsWithPrice.reduce((sum, r) => sum + (r.price || 0), 0);
 
     return (
         <div className="grid gap-6">
@@ -15,22 +71,22 @@ export default function ReportsPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Revenue (Est)</CardTitle>
+                        <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₱45,231.89</div>
-                        <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+                        <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">Based on recorded services</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Active Patients</CardTitle>
+                        <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
                         <Activity className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{totalPatients}</div>
-                        <p className="text-xs text-muted-foreground">{vetPatients} Vet / {groomingPatients} Grooming</p>
+                        <p className="text-xs text-muted-foreground">Registered in system</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -39,7 +95,7 @@ export default function ReportsPage() {
                         <Package className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{lowStockItems}</div>
+                        <div className="text-2xl font-bold">{lowStockItemsCount}</div>
                         <p className="text-xs text-muted-foreground">Items low on stock</p>
                     </CardContent>
                 </Card>
@@ -49,8 +105,8 @@ export default function ReportsPage() {
                         <BarChart className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">+573</div>
-                        <p className="text-xs text-muted-foreground">Since start of year</p>
+                        <div className="text-2xl font-bold">{servicesDelivered}</div>
+                        <p className="text-xs text-muted-foreground">All time records</p>
                     </CardContent>
                 </Card>
             </div>
@@ -58,20 +114,29 @@ export default function ReportsPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-4">
                     <CardHeader>
-                        <CardTitle>Recent Activity</CardTitle>
+                        <CardTitle>Recent Veterinary & Grooming Activity</CardTitle>
+                        <CardDescription>Latest services, prescriptions, and vaccinations</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
-                            {mockPets.slice(0, 5).map(pet => (
-                                <div key={pet.id} className="flex items-center">
+                            {activities.length === 0 && (
+                                <p className="text-sm text-muted-foreground">No recent activity found.</p>
+                            )}
+                            {activities.map(activity => (
+                                <div key={activity.id} className="flex items-center">
                                     <div className="ml-4 space-y-1">
-                                        <p className="text-sm font-medium leading-none">{pet.name}</p>
+                                        <p className="text-sm font-medium leading-none">{activity.title}</p>
                                         <p className="text-sm text-muted-foreground">
-                                            {pet.service} - {pet.status}
+                                            {activity.description}
                                         </p>
                                     </div>
-                                    <div className="ml-auto font-medium">
-                                        {pet.checkInTime}
+                                    <div className="ml-auto flex items-center gap-4">
+                                        <span className={`text-xs px-2 py-1 rounded-full border ${activity.type === 'Prescription' ? 'bg-blue-50 text-blue-700' : activity.type === 'Vaccination' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
+                                            {activity.type}
+                                        </span>
+                                        <div className="font-medium text-xs text-muted-foreground whitespace-nowrap">
+                                            {activity.date.toLocaleDateString()} {activity.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -85,7 +150,7 @@ export default function ReportsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
-                            {mockInventory.filter(i => i.status === "Low").map(item => (
+                            {lowStockItemsData.map(item => (
                                 <div key={item.id} className="flex items-center">
                                     <div className="ml-4 space-y-1">
                                         <p className="text-sm font-medium leading-none">{item.name}</p>
@@ -93,12 +158,12 @@ export default function ReportsPage() {
                                             {item.stock} {item.unit} remaining
                                         </p>
                                     </div>
-                                    <div className="ml-auto font-medium text-destructive">
+                                    <div className="ml-auto font-medium text-destructive text-sm">
                                         Restock
                                     </div>
                                 </div>
                             ))}
-                            {mockInventory.filter(i => i.status === "Low").length === 0 && (
+                            {lowStockItemsData.length === 0 && (
                                 <p className="text-sm text-muted-foreground">All items in good stock.</p>
                             )}
                         </div>

@@ -76,3 +76,37 @@ export async function createPet(data: FormData) {
         return { error: "Failed to create pet record" };
     }
 }
+
+export async function updatePet(id: string, data: FormData) {
+    const name = data.get("name") as string;
+    const breed = (data.get("breed") as string) || null;
+    const species = (data.get("species") as string) || null;
+    const ageString = data.get("age") as string;
+    const age = ageString ? parseInt(ageString, 10) : null;
+    const notes = (data.get("notes") as string) || null;
+
+    if (!name) return { error: "Name is required" };
+
+    try {
+        await prisma.pet.update({
+            where: { id },
+            data: { name, breed, species, age, notes }
+        });
+        revalidatePath("/admin/pets");
+        revalidatePath("/admin");
+        return { success: true };
+    } catch (e) {
+        return { error: "Failed to update pet" };
+    }
+}
+
+export async function deletePet(id: string) {
+    try {
+        await prisma.pet.delete({ where: { id } });
+        revalidatePath("/admin/pets");
+        revalidatePath("/admin");
+        return { success: true };
+    } catch (e) {
+        return { error: "Failed to delete pet" };
+    }
+}

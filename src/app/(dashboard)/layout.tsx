@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Users, User, LogOut, Stethoscope, Pill, FileText, Bell, PawPrint, CalendarCheck } from "lucide-react";
+import { LayoutDashboard, Users, User, LogOut, Stethoscope, Pill, FileText, Bell, PawPrint, CalendarCheck, Briefcase } from "lucide-react";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 export default function DashboardLayout({
     children,
@@ -17,6 +18,13 @@ export default function DashboardLayout({
                     </Link>
                 </div>
                 <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                    <Link
+                        href="/employee"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                    >
+                        <Briefcase className="h-4 w-4" />
+                        Employee Dashboard
+                    </Link>
                     <Link
                         href="/veterinary"
                         className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
@@ -53,6 +61,13 @@ export default function DashboardLayout({
                         Admin Dashboard
                     </Link>
                     <Link
+                        href="/admin/employees"
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary pl-8"
+                    >
+                        <User className="h-4 w-4" />
+                        Manage Employees
+                    </Link>
+                    <Link
                         href="/admin/clients"
                         className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary pl-8"
                     >
@@ -82,12 +97,7 @@ export default function DashboardLayout({
                     </Link>
                 </nav>
                 <div className="mt-auto p-4">
-                    <Button variant="outline" size="sm" className="w-full gap-2" asChild>
-                        <Link href="/">
-                            <LogOut className="h-4 w-4" />
-                            Exit to Site
-                        </Link>
-                    </Button>
+                    <LogoutButton />
                 </div>
             </aside>
             <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">

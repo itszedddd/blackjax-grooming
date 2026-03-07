@@ -1,24 +1,25 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockPets, Pet } from "@/lib/data";
-import { Stethoscope, Syringe, Pill, FileText, User, ArrowLeft } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { Stethoscope, Syringe, Pill, FileText, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import RecordVaccinationForm from "./record-vaccination-form";
+import StartConsultationBtn from "./start-consultation-btn";
 
-export default function PatientProfilePage() {
-    const params = useParams();
-    const [pet, setPet] = useState<Pet | null>(null);
+export const dynamic = "force-dynamic";
 
-    useEffect(() => {
-        if (params.id) {
-            const foundPet = mockPets.find((p) => p.id === params.id);
-            setPet(foundPet || null);
+export default async function PatientProfilePage(props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
+    const pet = await prisma.pet.findUnique({
+        where: { id: params.id },
+        include: {
+            client: true,
+            vaccinations: { orderBy: { dateGiven: "desc" } },
+            records: { orderBy: { date: "desc" } },
+            prescriptions: { orderBy: { issuedDate: "desc" } }
         }
-    }, [params]);
+    });
 
     if (!pet) {
         return (
@@ -30,6 +31,9 @@ export default function PatientProfilePage() {
             </div>
         );
     }
+
+    const latestRecord = pet.records[0];
+    const status = latestRecord ? (latestRecord.status === "completed" ? "Completed" : latestRecord.status) : "Pending";
 
     return (
         <div className="grid gap-6">
@@ -54,19 +58,19 @@ export default function PatientProfilePage() {
                         </div>
                         <div className="flex justify-between border-b pb-2">
                             <span className="font-medium">Breed:</span>
-                            <span className="text-muted-foreground">{pet.breed}</span>
+                            <span className="text-muted-foreground">{pet.breed || "Not specified"}</span>
                         </div>
                         <div className="flex justify-between border-b pb-2">
                             <span className="font-medium">Owner:</span>
-                            <span className="text-muted-foreground">{pet.ownerName}</span>
+                            <span className="text-muted-foreground">{pet.client.name}</span>
                         </div>
                         <div className="flex justify-between border-b pb-2">
                             <span className="font-medium">Contact:</span>
-                            <span className="text-muted-foreground">{pet.contactNumber}</span>
+                            <span className="text-muted-foreground">{pet.client.phone || pet.client.email || "N/A"}</span>
                         </div>
                         <div className="flex justify-between pt-2">
                             <span className="font-medium">Status:</span>
-                            <Badge>{pet.status}</Badge>
+                            <Badge>{status}</Badge>
                         </div>
                     </CardContent>
                 </Card>
@@ -76,12 +80,8 @@ export default function PatientProfilePage() {
                         <CardTitle>Actions</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-4">
-                        <Button className="w-full gap-2">
-                            <Stethoscope className="h-4 w-4" /> Start Consultation
-                        </Button>
-                        <Button variant="outline" className="w-full gap-2">
-                            <Syringe className="h-4 w-4" /> Record Vaccination
-                        </Button>
+                        <StartConsultationBtn petId={pet.id} />
+                        <RecordVaccinationForm petId={pet.id} />
                         <Button variant="outline" className="w-full gap-2" asChild>
                             <Link href={`/veterinary/prescribe/${pet.id}`}>
                                 <Pill className="h-4 w-4" /> Issue Prescription
@@ -99,18 +99,18 @@ export default function PatientProfilePage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {pet.medicalHistory.length === 0 ? (
+                    {pet.records.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No medical history recorded.</p>
                     ) : (
                         <div className="space-y-4">
-                            {pet.medicalHistory.map((record, i) => (
+                            {pet.records.map((record, i) => (
                                 <div key={i} className="rounded-lg border p-4">
                                     <div className="flex justify-between items-start mb-2">
-                                        <h4 className="font-semibold">{record.diagnosis}</h4>
-                                        <Badge variant="outline">{record.date}</Badge>
+                                        <h4 className="font-semibold">{record.serviceType}</h4>
+                                        <Badge variant="outline">{new Date(record.date).toLocaleDateString()}</Badge>
                                     </div>
-                                    <p className="text-sm text-muted-foreground mb-2">Treatment: {record.treatment}</p>
-                                    <p className="text-xs text-muted-foreground">Vet: {record.veterinarian}</p>
+                                    <p className="text-sm text-muted-foreground mb-2">Notes: {record.notes || "None"}</p>
+                                    <p className="text-xs text-muted-foreground">Status: {record.status}</p>
                                 </div>
                             ))}
                         </div>
@@ -135,11 +135,15 @@ export default function PatientProfilePage() {
                                     <div key={i} className="flex justify-between items-center border-b pb-2 last:border-0">
                                         <div>
                                             <p className="font-medium">{vac.name}</p>
-                                            <p className="text-xs text-muted-foreground">Given: {vac.dateGiven}</p>
+                                            <p className="text-xs text-muted-foreground">Given: {new Date(vac.dateGiven).toLocaleDateString()}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-muted-foreground">Due:</p>
-                                            <Badge variant="secondary">{vac.nextDueDate}</Badge>
+                                            {vac.nextDueDate ? (
+                                                <Badge variant="secondary">{new Date(vac.nextDueDate).toLocaleDateString()}</Badge>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">N/A</span>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -157,20 +161,24 @@ export default function PatientProfilePage() {
                     </CardHeader>
                     <CardContent>
                         {pet.prescriptions.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">No active prescriptions.</p>
+                            <p className="text-sm text-muted-foreground">No prescriptions recorded.</p>
                         ) : (
                             <div className="space-y-4">
-                                {pet.prescriptions.map((script, i) => (
-                                    <div key={i} className="rounded-lg border p-3">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <p className="font-semibold">{script.medicine}</p>
-                                            <Badge variant={script.status === "Active" ? "default" : "secondary"}>
-                                                {script.status}
+                                {pet.prescriptions.map((rx, i) => (
+                                    <div key={i} className="flex flex-col border-b pb-2 last:border-0">
+                                        <div className="flex justify-between items-start">
+                                            <p className="font-medium text-sm">{rx.medicine}</p>
+                                            <Badge variant={rx.status === "Active" ? "default" : "secondary"}>
+                                                {rx.status}
                                             </Badge>
                                         </div>
-                                        <p className="text-sm text-foreground">{script.dosage}</p>
-                                        <p className="text-xs text-muted-foreground italic">"{script.instructions}"</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Issued: {script.dateIssued}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Dosage: {rx.dosage}</p>
+                                        {rx.instructions && (
+                                            <p className="text-xs text-muted-foreground mt-1 break-words">Instructions: {rx.instructions}</p>
+                                        )}
+                                        <p className="text-[10px] text-muted-foreground mt-2">
+                                            Issued: {new Date(rx.issuedDate).toLocaleDateString()}
+                                        </p>
                                     </div>
                                 ))}
                             </div>

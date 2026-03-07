@@ -2,21 +2,45 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockPets } from "@/lib/data";
+import { prisma } from "@/lib/prisma";
 import { Stethoscope, Clock, CheckCircle } from "lucide-react";
+import NewConsultationForm from "./new-consultation-form";
 
-export default function VeterinaryPage() {
-    // Filter pets that need Veterinary services or are In Consultation
-    const vetPets = mockPets.filter(pet =>
-        (pet.service === "Veterinary" || pet.service === "Both") &&
-        pet.status !== "Completed"
-    );
+export const dynamic = "force-dynamic";
+
+export default async function VeterinaryPage() {
+    const pets = await prisma.pet.findMany({
+        include: {
+            client: true,
+            records: {
+                where: { serviceType: "Consultation" },
+                orderBy: { date: "desc" }
+            }
+        }
+    });
+
+    // Determine current logical status for each pet based on records
+    const vetPets = pets.map(pet => {
+        // Find the latest Consultation record
+        const latestRecord = pet.records[0];
+        let status = "Discharged";
+        if (latestRecord) {
+            status = latestRecord.status; // "scheduled", "In Consultation", "completed"
+        }
+        return {
+            ...pet,
+            status: status === "completed" ? "Completed" : status === "In Consultation" ? "In Consultation" : "Pending",
+            ownerName: pet.client.name
+        };
+    }).filter(p => p.records.length > 0 && p.status !== "Completed");
+
+    const allPets = pets;
 
     return (
         <div className="grid gap-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-lg font-semibold md:text-2xl">Veterinary Dashboard</h1>
-                <Button>New Consultation</Button>
+                <NewConsultationForm pets={allPets} />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -47,7 +71,7 @@ export default function VeterinaryPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {mockPets.filter(p => p.service === "Veterinary" && p.status === "Completed").length}
+                            {allPets.filter(p => p.records.some(r => r.serviceType === "Consultation" && r.status === "completed")).length}
                         </div>
                         <p className="text-xs text-muted-foreground">Discharged</p>
                     </CardContent>

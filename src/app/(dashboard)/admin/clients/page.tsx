@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import ClientForm from "./client-form";
+import ClientActions from "./client-actions";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminClientsPage() {
     const clients = await prisma.client.findMany({
@@ -28,13 +31,14 @@ export default async function AdminClientsPage() {
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Name</th>
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Contact</th>
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Pets</th>
-                                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right">Registered</th>
+                                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Registered</th>
+                                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right w-24">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="[&_tr:last-child]:border-0">
                                 {clients.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                                        <td colSpan={6} className="p-4 text-center text-muted-foreground">
                                             No clients found. Add one to get started.
                                         </td>
                                     </tr>
@@ -53,8 +57,11 @@ export default async function AdminClientsPage() {
                                                 {client.pets.length} pets
                                             </span>
                                         </td>
-                                        <td className="p-4 align-middle text-right text-muted-foreground">
+                                        <td className="p-4 align-middle text-muted-foreground">
                                             {new Date(client.createdAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="p-4 align-middle text-right">
+                                            <ClientActions client={client} />
                                         </td>
                                     </tr>
                                 ))}

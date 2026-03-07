@@ -1,21 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { mockPets, Pet, PetStatus } from "@/lib/data";
-import { Check, Clock, Droplets, Scissors } from "lucide-react";
+import { Check, Clock, Droplets, Scissors, RefreshCw } from "lucide-react";
+
+type PetStatus = "Pending" | "Shower" | "Trimming Nails" | "Washing" | "Grooming" | "Ready" | "Completed" | "In Consultation" | "Admitted";
+
+interface EmployeePet {
+    id: string;
+    name: string;
+    breed: string | null;
+    client: { name: string | null };
+    records: { status: string; serviceType: string }[];
+    status: PetStatus;
+}
 
 export default function EmployeePage() {
-    const [pets, setPets] = useState<Pet[]>(mockPets);
+    const [pets, setPets] = useState<EmployeePet[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const updateStatus = (id: string, newStatus: PetStatus) => {
-        setPets(pets.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
+    const fetchPets = async () => {
+        const res = await fetch("/api/pets");
+        const data = await res.json();
+        const mapped: EmployeePet[] = data.map((pet: any) => {
+            const latestRecord = pet.records[0];
+            let status: PetStatus = "Pending";
+            if (latestRecord) {
+                const s = latestRecord.status;
+                if (s === "completed") status = "Completed";
+                else if (s === "In Consultation") status = "In Consultation";
+                else if (s === "scheduled") status = "Pending";
+                else if (s === "Shower") status = "Shower";
+                else if (s === "Trimming Nails") status = "Trimming Nails";
+                else if (s === "Washing") status = "Washing";
+                else if (s === "Grooming") status = "Grooming";
+                else if (s === "Ready") status = "Ready";
+            }
+            return { ...pet, status };
+        });
+        setPets(mapped);
+        setLoading(false);
     };
+
+    useEffect(() => { fetchPets(); }, []);
+
+    const updateStatus = async (id: string, newStatus: PetStatus) => {
+        // Optimistic update
+        setPets(pets.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
+
+        // Find the specific pet's latest record to update its status in DB
+        const pet = pets.find(p => p.id === id);
+        if (pet && pet.records && pet.records.length > 0) {
+            try {
+                // we assume there's an API route we will create next
+                await fetch(`/api/records/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ petId: id, status: newStatus })
+                });
+            } catch (e) {
+                console.error("Failed to update status", e);
+            }
+        }
+    };
+
+    if (loading) return <div className="p-8 text-muted-foreground">Loading tasks...</div>;
 
     const getNextStatus = (current: PetStatus): PetStatus | null => {
         switch (current) {
             case "Pending":
+                return "Shower";
+            case "Shower":
+                return "Trimming Nails";
+            case "Trimming Nails":
                 return "Washing";
             case "Washing":
                 return "Grooming";
@@ -51,11 +109,11 @@ export default function EmployeePage() {
                                 <div className="text-sm">
                                     <div className="flex justify-between py-1 border-b">
                                         <span className="text-muted-foreground">Service:</span>
-                                        <span className="font-medium">{pet.service}</span>
+                                        <span className="font-medium">{pet.records[0]?.serviceType || "Grooming"}</span>
                                     </div>
                                     <div className="flex justify-between py-1 border-b">
                                         <span className="text-muted-foreground">Owner:</span>
-                                        <span>{pet.ownerName}</span>
+                                        <span>{pet.client.name}</span>
                                     </div>
                                     <div className="flex justify-between py-1 border-b">
                                         <span className="text-muted-foreground">Status:</span>
@@ -72,7 +130,9 @@ export default function EmployeePage() {
                                                 if (next) updateStatus(pet.id, next);
                                             }}
                                         >
-                                            {pet.status === 'Pending' && <><Droplets className="mr-2 h-4 w-4" /> Start Wash</>}
+                                            {pet.status === 'Pending' && <><Droplets className="mr-2 h-4 w-4" /> Start Shower</>}
+                                            {pet.status === 'Shower' && <><Scissors className="mr-2 h-4 w-4" /> Trim Nails</>}
+                                            {pet.status === 'Trimming Nails' && <><Droplets className="mr-2 h-4 w-4" /> Start Wash</>}
                                             {pet.status === 'Washing' && <><Scissors className="mr-2 h-4 w-4" /> Start Groom</>}
                                             {pet.status === 'Grooming' && <><Check className="mr-2 h-4 w-4" /> Mark Ready</>}
                                         </Button>

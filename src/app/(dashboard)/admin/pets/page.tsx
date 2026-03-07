@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import PetForm from "./pet-form";
+import PetActions from "./pet-actions";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminPetsPage() {
     const pets = await prisma.pet.findMany({
@@ -33,12 +36,13 @@ export default async function AdminPetsPage() {
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Owner</th>
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Species/Breed</th>
                                     <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Status</th>
+                                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground text-right w-24">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="[&_tr:last-child]:border-0">
                                 {pets.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                                        <td colSpan={6} className="p-4 text-center text-muted-foreground">
                                             No pets found. Add one to get started.
                                         </td>
                                     </tr>
@@ -61,6 +65,9 @@ export default async function AdminPetsPage() {
                                             `}>
                                                     {status}
                                                 </span>
+                                            </td>
+                                            <td className="p-4 align-middle text-right">
+                                                <PetActions pet={pet} />
                                             </td>
                                         </tr>
                                     )

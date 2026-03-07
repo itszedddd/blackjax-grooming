@@ -41,6 +41,32 @@ model Pet {
   clientId      String
   client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   records       Record[]
+  vaccinations  Vaccination[]
+  prescriptions Prescription[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Vaccination {
+  id            String    @id @default(cuid())
+  petId         String
+  pet           Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+  name          String
+  dateGiven     DateTime
+  nextDueDate   DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model InventoryItem {
+  id            String    @id @default(cuid())
+  name          String
+  category      String
+  stock         Int       @default(0)
+  unit          String
+  expiryDate    DateTime?
+  status        String    @default("Ok") // "Ok", "Low", "Out of Stock"
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -54,6 +80,19 @@ model Record {
   price         Float?
   status        String    @default("scheduled") // "scheduled", "completed", "cancelled"
   notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Prescription {
+  id            String    @id @default(cuid())
+  petId         String
+  pet           Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+  medicine      String
+  dosage        String
+  instructions  String?
+  status        String    @default("Active") // "Active", "Completed", "Cancelled"
+  issuedDate    DateTime  @default(now())
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }

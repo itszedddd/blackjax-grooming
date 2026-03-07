@@ -103,8 +103,11 @@ export default function RecordForm({ pets }: { pets: PetWithClient[] }) {
                                 name="status"
                                 className="col-span-3 flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                             >
-                                <option value="pending">Pending / Scheduled</option>
-                                <option value="in-progress">In Progress</option>
+                                <option value="scheduled">Pending / Scheduled</option>
+                                <option value="Shower">Shower</option>
+                                <option value="Trimming Nails">Trimming Nails</option>
+                                <option value="Washing">Washing</option>
+                                <option value="Grooming">Grooming</option>
                                 <option value="ready">Ready for Pickup</option>
                                 <option value="completed">Completed</option>
                                 <option value="cancelled">Cancelled</option>
